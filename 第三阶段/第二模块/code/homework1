@@ -1,0 +1,28 @@
+-- 1、使用 row_number函数按照team分组year排序给数据编号rownum
+-- 2、year - rownum = gp,根据差值检查是否为连续，连续值的差值是相同的，可据此分组
+-- 3、根据求得的gp和team，作为分组条件，通过count计数，大于等于3的即为3连贯team
+-- 4、distinct去重
+SELECT DISTINCT
+	team 
+FROM
+	(
+SELECT
+	team,
+	min( YEAR ),
+	max( YEAR ),
+	count( 1 ) AS count 
+FROM
+	(
+SELECT
+	team,
+	YEAR,
+	( YEAR - row_number ( ) over ( PARTITION BY team ORDER BY YEAR ) rn ) AS gp 
+FROM
+	t1 
+	) a11 
+GROUP BY
+	team,
+	gp 
+HAVING
+	count( 1 ) >= 3 
+	) pa11 

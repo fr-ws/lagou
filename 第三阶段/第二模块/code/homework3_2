@@ -1,0 +1,22 @@
+-- 1、使用lag()函数求出dt前一行的值
+-- 2、将每一行dt与前一行dt转为时间戳进行相减，然后除以60转换为分钟数
+-- 3、使用case when 语句，大于30的则为1 小于30 的则为0，打上flag标识
+-- 4、使用sum() 窗口函数，给所有数据打上分组标识gid
+-- 5、求时长，根据id,gid分组后dt排序后，使用最后时间-第一个时间即为分组时长 last_value（）需要指定开窗范围为整个分组，默认为第一行到当前行
+-- 6、求步长，根据id和duration分组计数
+
+select id,duration,count(1) as step from (
+select id,
+(unix_timestamp(last_value(dt) over(partition by id,gid order by dt rows between unbounded preceding and unbounded following) , 'yyyy/MM/dd hh:mm' )-
+unix_timestamp(first_value(dt) over(partition by id,gid order by dt) , 'yyyy/MM/dd hh:mm' ))/60
+as duration
+from (
+select id,dt,flag,sum(flag) over(partition by id order by dt) as gid from (
+
+select id, dt,last_1_dt,
+case when nvl((unix_timestamp(dt , 'yyyy/MM/dd hh:mm' )-unix_timestamp(last_1_dt , 'yyyy/MM/dd hh:mm' ))/60,0)>30 then 1 else 0 end as flag from (
+
+SELECT id,dt,  lag(dt,1,dt) over(PARTITION BY id order by dt) as last_1_dt from t3) a1) a11
+) pa11
+)pa12
+group by id,duration

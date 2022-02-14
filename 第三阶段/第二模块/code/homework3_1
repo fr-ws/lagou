@@ -1,0 +1,13 @@
+--1、时长=最后一次浏览时间-第一次浏览时间，结果保留一位小数; 
+--2、步长=不去重计数 
+--3、使用 UNIX_TIMESTAMP()函数按照格式转换为时间戳,除以 60转换为分钟
+SELECT
+id,
+cast(
+( ( unix_timestamp( max( dt ), 'yyyy/MM/dd hh:mm' ) - unix_timestamp( min( dt ), 'yyyy/MM/dd hh:mm' ) ) / 60 ) AS DECIMAL ( 5, 1 ) 
+) AS duration,
+count( browseid ) AS step 
+FROM
+	t3 
+GROUP BY
+	id;

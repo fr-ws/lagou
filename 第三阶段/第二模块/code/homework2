@@ -1,0 +1,24 @@
+--1、思路：波峰>前后的值，波谷<前后的值
+--2、使用lag函数找到上一行值，lead函数找到下一行值，按照id分组time排序
+--3、case then 判断当前值与前后行的大小，存在重复数据，增加=条件
+--4、过滤空值为最终结果
+SELECT *  FROM
+	(
+SELECT
+	id,time,price,
+CASE
+	WHEN price - last_1_price >= 0 
+	AND price - next_1_price > 0 THEN
+	'波峰' 
+WHEN price - last_1_price < 0 
+AND price - next_1_price <= 0 THEN
+'波谷' ELSE NULL 
+END AS feature 
+FROM
+	(
+	SELECT
+		id,time,price,
+		lag ( price, 1, 0 ) over ( PARTITION BY id ORDER BY time ) last_1_price,
+		lead ( price, 1, 0 ) over ( PARTITION BY id ORDER BY time ) next_1_price 
+	FROM  t2 ) a1 ) a11 
+WHERE  feature IS NOT NULL
