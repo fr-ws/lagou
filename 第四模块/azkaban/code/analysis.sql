@@ -1,0 +1,1 @@
+use homework;insert into table user_info select count(distinct userId) active_num,to_date(click_time) dateStr from user_clicks where to_date(click_time)=current_date() group by to_date(click_time);
