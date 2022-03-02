@@ -1,0 +1,189 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>homework</title>
+		<link rel="stylesheet" href="css/main.css">
+
+
+
+	</head>
+
+	</head>
+	<body>
+		<span id="sitetime"></span>
+		<div align="center"
+			style="border: 0px solid #63B8FF; min-height: 50px; font-size: 16px; line-height: 1.5; margin: 5px; border-radius: 2em;padding: 5px;"
+			<div id="wrapper">
+			<header id="header">
+				<div class="logo">
+					<!--头像地址-->
+					<img src="./images/2.jpg" class="logo">
+				</div>
+				<div class="content">
+					<div class="inner">
+						<!--标题-->
+						<h2><a href="index.html#">kafka homework</a></h2>
+
+					</div>
+				</div>
+				<div>
+					<nav>
+
+						<ul>
+
+
+							<li><button onclick="collect('click')">点击</button>
+							<li><button onclick="collect('collect')">收藏</button>
+							<li><button onclick="collect('send')">投简历</button>
+							<li><button onclick="collect('upload')">上传简历</button>
+
+						</ul><br>
+
+					</nav>
+				</div>
+			</header>
+
+			<body>
+				<span id="sitetime"></span>
+				<div align="center"
+					style="border: 0px solid #63B8FF; min-height: 50px; font-size: 16px; line-height: 1.5; margin: 5px; border-radius: 2em;padding: 5px;"
+					</div>
+					</a>
+
+
+					<style>
+						.cywl {
+							position: fixed !important;
+							position: absolute;
+							width: 70px;
+							height: 75px;
+							z-index: 9;
+							right: 0;
+							bottom: 0;
+							top: expression(offsetParent.scrollTop+offsetParent.clientHeight-150);
+							cursor: pointer;
+						}
+					</style>
+
+
+
+
+					<script type="text/javascript">
+						(function() {
+							var coreSocialistValues = ["+100"],
+								index = Math.floor(Math.random() * coreSocialistValues.length);
+							document.body.addEventListener('click', function(e) {
+								if (e.target.tagName == 'A') {
+									return;
+								}
+								var x = e.pageX,
+									y = e.pageY,
+									span = document.createElement('span');
+								span.textContent = coreSocialistValues[index];
+								index = (index + 1) % coreSocialistValues.length;
+								span.style.cssText = [
+									'z-index: 9999999; position: absolute; font-weight: bold; color: #00FF00; top: ', y -
+									20, 'px; left: ', x, 'px;'
+								].join('');
+								document.body.appendChild(span);
+								animate(span);
+							});
+
+							function animate(el) {
+								var i = 0,
+									top = parseInt(el.style.top),
+									id = setInterval(frame, 16.7);
+
+								function frame() {
+									if (i > 180) {
+										clearInterval(id);
+										el.parentNode.removeChild(el);
+									} else {
+										i += 2;
+										el.style.top = top - i + 'px';
+										el.style.opacity = (180 - i) / 180;
+									}
+								}
+							}
+						}());
+
+
+
+
+//收集操作日志
+function collect(action) {
+	let user_id = ['user1', 'user2', 'user3']
+	let job_code = ['lagou', 'ali', 'tx'];
+	$.ajax({
+		url: 'http://linux121/homework/action',
+		type: 'POST',
+		contentType: 'application/json;charset=utf-8',
+		dataType: 'json',
+		data: {
+			user_id: user_id[randomNum(0, 2)],
+			act_time: new Date().getTime(),
+			action: action,
+			job_code: job_code[randomNum(0, 2)]
+		},
+		success: function(data) {
+
+		}
+	})
+}
+
+//生成从minNum到maxNum的随机数
+function randomNum(minNum, maxNum) {
+	switch (arguments.length) {
+		case 1:
+			return parseInt(Math.random() * minNum + 1, 10);
+			break;
+		case 2:
+			return parseInt(Math.random() * (maxNum - minNum + 1) + minNum, 10);
+			break;
+		default:
+			return 0;
+			break;
+	}
+}
+					</script>
+				</div>
+		</div>
+		</div>
+		</div>
+		</header>
+		</div>
+		</div>
+		</section>
+		</div>
+		<script type="text/javascript" src="https://ohan.gitee.io/HanKu/HanJs/HanSnow.js"></script>
+	</body>
+
+	<div id="bg">
+	</div>
+	<script src="https://libs.baidu.com/jquery/1.11.3/jquery.min.js"></script>
+	<!-- REQUIRED SCRIPTS FILES -->
+	</body>
+</html>
+
+
+
+
+<script id="ilt" src="https://player.ilt.me/player/js/player.js" key="bda5b26df9fc46bd892a5715fbc31370"></script>
+
+
+<script src="http://www.lmlblog.com/winter/templets/xq/js/snowy.js"></script>
+<style type="text/css">
+	.snow-container {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		pointer-events: none;
+		z-index: 100001;
+	}
+</style>
+<div class="snow-container"></div>
+<SCRIPT Language=VBScript>
+</SCRIPT>
