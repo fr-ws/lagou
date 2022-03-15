@@ -1,0 +1,275 @@
+一、在会员分析中计算最近七天连续三天活跃会员数
+思路：
+1.按照之前分组求连续的方法限定数据范围为最近七天即可
+2.考虑按照数仓分层的方式解决
+  dws层建表保存每日近三天的活跃用户信息
+  ads层只统计每日最近七天连续三天活跃会员数
+
+方法一：
+1.--ads建表语句，每日的最近七天连续三天活跃用户信息
+drop table if exists ads.dws_member_three_consecutive_last_seven_days;
+create table ads.dws_member_three_consecutive_last_seven_days(
+`cnt` string
+)  COMMENT '连续三天活跃会员'
+partitioned by (`dt` string)
+stored as parquet;
+
+2.shell脚本加载数据
+#分组求最近七天连续三天活跃用户
+#!/bin/bash
+source /etc/profile
+if [ -n "$1" ]
+then
+    do_date=$1
+else
+    do_date=`date -d "-1 day" +%F`
+fi
+
+sql="
+WITH tmp as(
+            SELECT device_id,dt,
+			#分组排序后通过日期减去排名得到分组
+                date_sub(dt,row_number() over(partition by device_id order by dt)) groupId
+              FROM dws_member_start_day
+			  #限定时间为最近七天
+            WHERE dt between date_sub(current_date,7) and current_date),
+     tmp2 as(SELECT device_id,count(1) cnt 
+              FROM tmp
+            GROUP BY device_id,groupId
+            having cnt >= 3)
+insert into table ads.ads_member_three_consecutive_last_seven_days
+#统计值cnt大于等于3的记录数，即为最近7天中连续3天活跃会员数
+SELECT count(distinct device_id) cnt 
+  FROM tmp2;
+" 
+
+hive -e "$sql"
+
+  
+方法二：  
+1.
+--dws建表语句，每日的连续三天活跃用户信息
+DROP TABLE IF EXISTS dws.dws_member_three_consecutive_day;
+CREATE TABLE dws.dws_member_three_consecutive_day (
+`device_id` string,
+`uid` string,
+`app_v` string,
+`os_type` string,
+`language` string,
+`channel` string,
+`area` string,
+`brand` string,
+`date` string 
+) COMMENT '连续三天活跃会员' 
+partitioned BY ( `dt` string ) 
+stored AS parquet;
+
+2.由于数据质量不太友好，每个user的设备号等信息都会不一致等，
+  求每日连续活跃用户详细信息不能按照分组的方法，假设每个设备取第一天的详细信息，可以关联三天数据进行计算
+  
+#加载dws层数据
+#! /bin/bash
+source /etc/profile
+if [ -n "$1" ] ;then
+do_date=$1
+else
+do_date=`date -d "-1 day" +%F`
+fi
+sql="
+insert overwrite table dws.dws_member_three_consecutive_day
+partition (dt='$do_date')
+
+select t1.* from (
+(select *
+from dws.dws_member_start_day where dt = '$do_date')  t1
+join (select device_id from dws.dws_member_start_day where dt = date_sub('$do_date',1)) t2
+on t1.device_id = t2.device_id
+join (select device_id from dws.dws_member_start_day where dt = date_sub('$do_date',2)) t3
+on t2.device_id = t3.device_id
+) 
+"
+hive -e "$sql"
+
+3.dws存的是每日近三天用户信息，ads求近七天时应该限定少两天。
+#加载ads层数据
+#! /bin/bash
+source /etc/profile
+if [ -n "$1" ] ;then
+do_date=$1
+else
+do_date=`date -d "-1 day" +%F`
+fi
+sql="
+insert overwrite table ads.ads_member_three_consecutive_last_seven_days
+partition (dt='$do_date')
+select count(distinct device_id) cnt 
+from 
+dws.dws_member_three_consecutive_day 
+where dt between date_sub('$do_date',5) and '$do_date'
+"
+hive -e "$sql"
+"
+) 
+hive -e "$sql"
+
+
+
+二、项目的数据采集过程中，有哪些地方能够优化，如何实现？
+对flume接触较少，能想到比较直接的就是去掉日志文件前的无用信息
+从网上查相关资料也是简略带过，希望导师能给一些详细的解答
+
+
+1.Flume修改自定义拦截器，过滤掉多余的数据，仅保留Json串，减少数据冗余，简化解析过程；
+
+代码：
+package cn.lagou.dw.flume.interceptor;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import org.apache.commons.compress.utils.Charsets;
+import org.apache.flume.Context;
+import org.apache.flume.Event;
+import org.apache.flume.event.SimpleEvent;
+import org.apache.flume.interceptor.Interceptor;
+import org.junit.Test;
+
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class HomeworkInterceptor implements Interceptor {
+    @Override
+    public void initialize() {
+
+    }
+
+    @Override
+
+//逐条处理event
+//    自定义拦截器的实现：
+//1、获取 event 的 header
+//2、获取 event 的 body
+//3、解析body获取json串
+//4、解析json串获取时间戳
+//5、将时间戳转换为字符串 "yyyy-MM-dd"
+//6、将转换后的字符串放置header中
+//7、返回event
+    public Event intercept(Event event) {
+        //获取event的body
+        String eventBody = new String(event.getBody(), Charsets.UTF_8);
+
+        //获取event的header
+        Map<String, String> headersMap = event.getHeaders();
+
+        String[] bodyArr = eventBody.split("\\s+");
+
+        try {
+            String jsonStr = bodyArr[6];
+            String timestampStr = "";
+            JSONObject jsonObject = JSON.parseObject(jsonStr);
+            byte[] bodyBytes = jsonStr.getBytes();
+
+            //解析json获取时间戳
+            if (headersMap.getOrDefault("logtype", "").equals("start")) {
+                timestampStr = jsonObject.getJSONObject("app_active").getString("time");
+            } else if (headersMap.getOrDefault("logtype", "").equals("event")) {
+                JSONArray jsonArray = jsonObject.getJSONArray("lagou_event");
+                if (jsonArray.size() > 0) {
+                    timestampStr = jsonArray.getJSONObject(0).getString("time");
+                }
+
+            }
+
+
+            //将时间戳转换为字符串“yyyy-MM-dd”
+
+            //将字符串转换为Long
+            long timestamp = Long.parseLong(timestampStr);
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+            Instant instant = Instant.ofEpochMilli(timestamp);
+            LocalDateTime localDateTime = LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
+            String date = formatter.format(localDateTime);
+
+            //将转换后的字符串放入header
+            headersMap.put("logtime", date);
+            event.setHeaders(headersMap);
+            event.setBody(bodyBytes);
+
+        } catch (Exception e) {
+            headersMap.put("logtime", "unknown");
+            event.setHeaders(headersMap);
+        }
+
+
+        return event;
+    }
+
+    @Override
+    public List<Event> intercept(List<Event> events) {
+
+        List<Event> lstEvent = new ArrayList<>();
+
+        for (Event event : events) {
+            Event outEvent = intercept(event);
+            if (outEvent != null) {
+                lstEvent.add(outEvent);
+            }
+
+        }
+
+        return lstEvent;
+    }
+
+    @Override
+    public void close() {
+
+    }
+
+    public static class Builder implements Interceptor.Builder {
+        @Override
+        public Interceptor build() {
+            return new HomeworkInterceptor();
+        }
+
+        @Override
+        public void configure(Context context) {
+
+        }
+    }
+
+    @Test
+    public void testJunit() {
+
+//        String str = "2020-08-02 18:19:32.959 [main] INFO com.lagou.ecommerce.AppStart - {\"app_active\":{\"name\":\"app_active\",\"json\":{\"entry\":\"1\",\"action\":\"0\",\"error_code\":\"0\"},\"time\":1596342840284},\"attr\":{\"area\":\"大庆\",\"uid\":\"2F10092A2\",\"app_v\":\"1.1.15\",\"event_type\":\"common\",\"device_id\":\"1FB872-9A1002\",\"os_type\":\"2.8\",\"channel\":\"TB\",\"language\":\"chinese\",\"brand\":\"iphone-8\"}}";
+        String str = "2021-09-16 16:54:58.166 [main] INFO  com.lagou.ecommerce.AppEvent - {\"lagou_event\":[{\"name\":\"goods_detail_loading\",\"json\":{\"entry\":\"2\",\"goodsid\":\"0\",\"loading_time\":\"58\",\"action\":\"2\",\"staytime\":\"13\",\"showtype\":\"0\"},\"time\":1596124800000}],\"attr\":{\"area\":\"遵义\",\"uid\":\"2F10092A2\",\"app_v\":\"1.1.14\",\"event_type\":\"common\",\"device_id\":\"1FB872-9A1002\",\"os_type\":\"7.6.2\",\"channel\":\"HK\",\"language\":\"chinese\",\"brand\":\"iphone-3\"}}\n";
+
+        HashMap<String, String> map = new HashMap<>();
+        map.put("logtype", "event");
+        // new events
+        SimpleEvent event = new SimpleEvent();
+        event.setHeaders(map);
+        event.setBody(str.getBytes(Charsets.UTF_8));
+
+        //调用interceptor 处理event
+
+        HomeworkInterceptor customerInterceptor = new HomeworkInterceptor();
+        Event outEvent = customerInterceptor.intercept(event);
+        String eventBody = new String(outEvent.getBody(), Charsets.UTF_8);
+        Map<String, String> headersMap = outEvent.getHeaders();
+        System.out.println(eventBody);
+
+        //返回处理结果
+
+    }
+
+
+}
+
+
